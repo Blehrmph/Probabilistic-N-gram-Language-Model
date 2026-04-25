@@ -13,6 +13,7 @@ def perplexity(model: NgramModel, sentences: list[list[str]]) -> float:
     total_tokens = 0
 
     for sent in sentences:
+        sent = model.unk_sentence(sent)
         if len(sent) < 3:
             continue
         for i in range(2, len(sent)):

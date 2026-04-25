@@ -19,6 +19,7 @@ class NgramModel:
         self.vocab: set = set()
         self.N: int = 0                        # total token count
         self.lambdas: tuple = (0.1, 0.3, 0.6) # (λ_uni, λ_bi, λ_tri) — overwritten after training
+        self.rare_words: set = set()           # words replaced by <UNK> during training
 
     # ── Training ───────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ class NgramModel:
         # First pass: find rare words and map them to <UNK>
         raw: Counter = Counter(w for sent in sentences for w in sent)
         rare = {w for w, c in raw.items() if c < min_freq and w not in ("<s>", "</s>")}
+        self.rare_words = rare
         print(f"  Rare words (freq < {min_freq}): {len(rare):,} replaced with <UNK>")
 
         # Second pass: count n-grams on UNK-replaced sentences
@@ -85,6 +87,10 @@ class NgramModel:
         total = l1 + l2 + l3
         if total > 0:
             self.lambdas = (l1 / total, l2 / total, l3 / total)
+
+    def unk_sentence(self, sent: list[str]) -> list[str]:
+        """Replace words unseen during training with <UNK>."""
+        return [w if w not in self.rare_words else "<UNK>" for w in sent]
 
     # ── MLE probabilities ──────────────────────────────────────────────────────
 

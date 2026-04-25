@@ -57,17 +57,15 @@ def generate(
     seed: str | None = None,
     max_words: int = 30,
     strategy: str = "sample",
-    no_repeat_window: int = 4,
 ) -> str:
     """
     Generate a sequence of words.
 
     Parameters
     ----------
-    seed             : optional seed phrase (1-2 words); random start if None
-    max_words        : maximum output length (excluding <s>)
-    strategy         : 'sample' for probabilistic sampling, 'greedy' for argmax
-    no_repeat_window : greedy only — blocks words seen in the last N tokens
+    seed      : optional seed phrase (1-2 words); random start if None
+    max_words : maximum output length (excluding <s>)
+    strategy  : 'sample' for probabilistic sampling, 'greedy' for argmax
     """
     if seed:
         tokens = ["<s>"] + seed.strip().split()
@@ -76,13 +74,24 @@ def generate(
                      if w not in ("<s>", "</s>")]
         tokens = ["<s>", random.choice(top_words)]
 
+    seen_bigrams: set[tuple] = set()
+
     while len(tokens) - 1 < max_words:
         w1 = tokens[-2] if len(tokens) >= 2 else "<s>"
         w2 = tokens[-1]
-        blocked = set(tokens[-no_repeat_window:]) if strategy == "greedy" else None
+
+        # Greedy: block any word that would recreate an already-seen bigram.
+        # This prevents all cyclic loops regardless of cycle length.
+        if strategy == "greedy":
+            blocked = {w for w in _candidates(model, w1, w2) if (w2, w) in seen_bigrams}
+        else:
+            blocked = None
+
         next_word = _sample_next(model, w1, w2, strategy, blocked=blocked)
         if next_word == "</s>":
             break
+
+        seen_bigrams.add((w2, next_word))
         tokens.append(next_word)
 
     return " ".join(tokens[1:])  # strip leading <s>
