@@ -14,6 +14,7 @@ def _candidates(model: NgramModel, w1: str, w2: str, top_unigrams: int = 100) ->
     cands.update(model.bigrams.get(w2, {}).keys())
     cands.update(w for w, _ in model.unigrams.most_common(top_unigrams))
     cands.discard("<s>")
+    cands.discard("<UNK>")
     return list(cands)
 
 
