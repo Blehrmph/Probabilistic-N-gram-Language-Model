@@ -22,9 +22,16 @@ class NgramModel:
 
     # ── Training ───────────────────────────────────────────────────────────────
 
-    def train(self, sentences: list[list[str]]) -> None:
+    def train(self, sentences: list[list[str]], min_freq: int = 3) -> None:
+        # First pass: find rare words and map them to <UNK>
+        raw: Counter = Counter(w for sent in sentences for w in sent)
+        rare = {w for w, c in raw.items() if c < min_freq and w not in ("<s>", "</s>")}
+        print(f"  Rare words (freq < {min_freq}): {len(rare):,} replaced with <UNK>")
+
+        # Second pass: count n-grams on UNK-replaced sentences
         print("  Counting n-grams...")
         for sent in sentences:
+            sent = [w if w not in rare else "<UNK>" for w in sent]
             self.N += len(sent)
             for i, w in enumerate(sent):
                 self.vocab.add(w)

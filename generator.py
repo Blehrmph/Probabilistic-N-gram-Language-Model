@@ -17,7 +17,13 @@ def _candidates(model: NgramModel, w1: str, w2: str, top_unigrams: int = 100) ->
     return list(cands)
 
 
-def _sample_next(model: NgramModel, w1: str, w2: str, strategy: str) -> str:
+def _sample_next(
+    model: NgramModel,
+    w1: str,
+    w2: str,
+    strategy: str,
+    blocked: set[str] | None = None,
+) -> str:
     cands = _candidates(model, w1, w2)
     if not cands:
         return "</s>"
@@ -28,6 +34,13 @@ def _sample_next(model: NgramModel, w1: str, w2: str, strategy: str) -> str:
         return "</s>"
 
     if strategy == "greedy":
+        # Filter recently used words to break repetition loops; fall back to
+        # the full candidate set if filtering leaves nothing viable.
+        if blocked:
+            filtered = {w: p for w, p in scores.items() if w not in blocked}
+            if filtered:
+                scores = filtered
+                total  = sum(scores.values())
         return max(scores, key=scores.get)
 
     # weighted random sampling
@@ -44,15 +57,17 @@ def generate(
     seed: str | None = None,
     max_words: int = 30,
     strategy: str = "sample",
+    no_repeat_window: int = 4,
 ) -> str:
     """
     Generate a sequence of words.
 
     Parameters
     ----------
-    seed      : optional seed phrase (1–2 words); random start if None
-    max_words : maximum output length (excluding <s>)
-    strategy  : 'sample' for probabilistic sampling, 'greedy' for argmax
+    seed             : optional seed phrase (1-2 words); random start if None
+    max_words        : maximum output length (excluding <s>)
+    strategy         : 'sample' for probabilistic sampling, 'greedy' for argmax
+    no_repeat_window : greedy only — blocks words seen in the last N tokens
     """
     if seed:
         tokens = ["<s>"] + seed.strip().split()
@@ -64,7 +79,8 @@ def generate(
     while len(tokens) - 1 < max_words:
         w1 = tokens[-2] if len(tokens) >= 2 else "<s>"
         w2 = tokens[-1]
-        next_word = _sample_next(model, w1, w2, strategy)
+        blocked = set(tokens[-no_repeat_window:]) if strategy == "greedy" else None
+        next_word = _sample_next(model, w1, w2, strategy, blocked=blocked)
         if next_word == "</s>":
             break
         tokens.append(next_word)
