@@ -35,14 +35,22 @@ def _sample_next(
         return "</s>"
 
     if strategy == "greedy":
-        # Filter recently used words to break repetition loops; fall back to
-        # the full candidate set if filtering leaves nothing viable.
+        # Top-5 sampling: pick randomly among the 5 highest-probability words.
+        # Prevents deterministic convergence while staying high-quality.
         if blocked:
             filtered = {w: p for w, p in scores.items() if w not in blocked}
             if filtered:
                 scores = filtered
                 total  = sum(scores.values())
-        return max(scores, key=scores.get)
+        top_k = sorted(scores, key=scores.get, reverse=True)[:5]
+        top_scores = {w: scores[w] for w in top_k}
+        total = sum(top_scores.values())
+        r, cumulative = random.random() * total, 0.0
+        for w, p in top_scores.items():
+            cumulative += p
+            if cumulative >= r:
+                return w
+        return top_k[0]
 
     # weighted random sampling
     r, cumulative = random.random() * total, 0.0
