@@ -26,7 +26,7 @@ class NgramModel:
 
     # ── Training ───────────────────────────────────────────────────────────────
 
-    def train(self, sentences: list[list[str]], min_freq: int = 3) -> None:
+    def train(self, sentences: list[list[str]], min_freq: int = 5) -> None:
         # First pass: find rare words and map them to <UNK>
         raw: Counter = Counter(w for sent in sentences for w in sent)
         rare = {w for w, c in raw.items() if c < min_freq and w not in ("<s>", "</s>")}

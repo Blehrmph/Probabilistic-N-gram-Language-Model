@@ -79,6 +79,8 @@ PP = 2^( -1/N · Σ log₂ P(wᵢ | wᵢ₋₂, wᵢ₋₁) )
 
 Both a bigram (order=2) and trigram (order=3) model are trained and evaluated side by side to demonstrate the gain from the additional context. Lower perplexity = better model fit.
 
+> **Note on train/validation gap:** A large gap between train and validation perplexity is expected for word-level n-gram models trained on noisy social media data. The vocabulary is large relative to the corpus size, so many trigram and bigram contexts appear only in training. This is a known limitation of count-based n-gram models — neural language models address it through distributed word representations, but are out of scope here.
+
 ### 5. Text Generation (`generator.py`)
 Given an optional seed phrase, the model scores candidate next words drawn from the trigram context, bigram context, and top unigrams, then picks the next word by either:
 - **Greedy**: always picks the highest-probability word
