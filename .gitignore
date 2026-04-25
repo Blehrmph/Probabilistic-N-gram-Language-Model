@@ -1,2 +1,6 @@
-/DATASET
+DATASET/
 *.txt
+*.pkl
+__pycache__/
+*.pyc
+.env
