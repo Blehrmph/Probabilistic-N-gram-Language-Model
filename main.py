@@ -40,22 +40,35 @@ if __name__ == "__main__":
 
     # ── 3. Train ───────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
-    print("STEP 3 — Training interpolated trigram model")
+    print("STEP 3 — Training bigram and trigram models")
     print("=" * 50)
-    model = NgramModel()
+
+    print("\n[Bigram model]")
+    bigram_model = NgramModel(order=2)
+    bigram_model.train(train)
+
+    print("\n[Trigram model]")
+    model = NgramModel(order=3)
     model.train(train)
 
     # ── 4. Evaluate ────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)
     print("STEP 4 — Evaluation (perplexity)")
     print("=" * 50)
+
     # Cap train eval at 5 000 sentences to keep it fast
-    train_pp = perplexity(model, train[:5_000])
-    val_pp   = perplexity(model, val)
-    test_pp  = perplexity(model, test)
-    print(f"  Train perplexity      : {train_pp:,.2f}")
-    print(f"  Validation perplexity : {val_pp:,.2f}")
-    print(f"  Test perplexity       : {test_pp:,.2f}")
+    bi_train = perplexity(bigram_model, train[:5_000])
+    bi_val   = perplexity(bigram_model, val)
+    bi_test  = perplexity(bigram_model, test)
+
+    tri_train = perplexity(model, train[:5_000])
+    tri_val   = perplexity(model, val)
+    tri_test  = perplexity(model, test)
+
+    print(f"\n  {'Model':<10} {'Train':>12} {'Validation':>12} {'Test':>12}")
+    print(f"  {'-'*10} {'-'*12} {'-'*12} {'-'*12}")
+    print(f"  {'Bigram':<10} {bi_train:>12,.2f} {bi_val:>12,.2f} {bi_test:>12,.2f}")
+    print(f"  {'Trigram':<10} {tri_train:>12,.2f} {tri_val:>12,.2f} {tri_test:>12,.2f}")
 
     # ── 5. Generate ────────────────────────────────────────────────────────────
     print("\n" + "=" * 50)

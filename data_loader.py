@@ -35,8 +35,8 @@ def load_twitter(filename="tweets.txt", max_mb=50):
 
 
 def load_corpus():
-    print("Loading story-data (first 2 files)...")
-    texts = load_story(max_files=2)
+    print("Loading story-data (first 4 files)...")
+    texts = load_story(max_files=4)
     print("Loading twitter data (first 50 MB)...")
     texts += load_twitter(max_mb=50)
     total_chars = sum(len(t) for t in texts)

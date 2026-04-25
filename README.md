@@ -26,10 +26,10 @@ Once downloaded, extract the contents into a `DATASET/` directory at the project
 ### Data Used for Training
 
 Out of the full corpus, this model trains on:
-- **story-data**: first 2 files (~50 MB of narrative Darija)
+- **story-data**: first 4 files (~80 MB of narrative Darija)
 - **twitter**: first 50 MB of `tweets.txt` (natural, informal Darija)
 
-This gives ~100 MB of training data, balancing coverage and training speed.
+This gives ~130 MB of training data, balancing coverage and training speed.
 
 > **Note:** The `DATASET/` directory and all `.txt` files are excluded from version control via `.gitignore`. Download the data separately using the link above.
 
@@ -77,7 +77,7 @@ Perplexity is computed on held-out data using an 80/10/10 train/validation/test 
 PP = 2^( -1/N · Σ log₂ P(wᵢ | wᵢ₋₂, wᵢ₋₁) )
 ```
 
-Lower perplexity = better model fit.
+Both a bigram (order=2) and trigram (order=3) model are trained and evaluated side by side to demonstrate the gain from the additional context. Lower perplexity = better model fit.
 
 ### 5. Text Generation (`generator.py`)
 Given an optional seed phrase, the model scores candidate next words drawn from the trigram context, bigram context, and top unigrams, then picks the next word by either:

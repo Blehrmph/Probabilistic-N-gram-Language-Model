@@ -4,15 +4,18 @@ from collections import defaultdict, Counter
 
 class NgramModel:
     """
-    Trigram language model with linear interpolation.
+    Interpolated n-gram language model (order 2 or 3).
 
-    P(w | w1, w2) = λ3·P_mle(w|w1,w2) + λ2·P_mle(w|w2) + λ1·P_mle(w)
+    Trigram (order=3): P(w | w1, w2) = λ3·P_mle(w|w1,w2) + λ2·P_mle(w|w2) + λ1·P_mle(w)
+    Bigram  (order=2): P(w | w2)     = λ2·P_mle(w|w2)     + λ1·P_mle(w)
 
     Lambda weights are estimated from training data via deleted interpolation
     (Jelinek & Mercer, 1980), so the corpus itself decides each order's contribution.
     """
 
-    def __init__(self):
+    def __init__(self, order: int = 3):
+        assert order in (2, 3), "order must be 2 or 3"
+        self.order: int = order
         self.unigrams: Counter = Counter()
         self.bigrams: dict[str, Counter] = defaultdict(Counter)
         self.trigrams: dict[tuple, Counter] = defaultdict(Counter)
@@ -40,49 +43,63 @@ class NgramModel:
                 self.unigrams[w] += 1
                 if i >= 1:
                     self.bigrams[sent[i - 1]][w] += 1
-                if i >= 2:
+                if i >= 2 and self.order == 3:
                     self.trigrams[(sent[i - 2], sent[i - 1])][w] += 1
 
         print(f"  Vocabulary    : {len(self.vocab):,} types")
         print(f"  Tokens        : {self.N:,}")
         print(f"  Bigram ctxs   : {len(self.bigrams):,}")
-        print(f"  Trigram ctxs  : {len(self.trigrams):,}")
+        if self.order == 3:
+            print(f"  Trigram ctxs  : {len(self.trigrams):,}")
 
         print("  Estimating λ weights via deleted interpolation...")
         self._estimate_lambdas()
         l1, l2, l3 = self.lambdas
-        print(f"  λ = (unigram={l1:.3f}, bigram={l2:.3f}, trigram={l3:.3f})")
+        if self.order == 3:
+            print(f"  λ = (unigram={l1:.3f}, bigram={l2:.3f}, trigram={l3:.3f})")
+        else:
+            print(f"  λ = (unigram={l1:.3f}, bigram={l2:.3f})")
 
     def _estimate_lambdas(self) -> None:
         """
-        Deleted interpolation: for every observed trigram event, temporarily
+        Deleted interpolation: for every observed n-gram event, temporarily
         remove one count and see which order gives the highest adjusted MLE.
         Accumulate mass toward that order's lambda, then normalise.
         """
         l1 = l2 = l3 = 0.0
 
-        for (w1, w2), w3_counts in self.trigrams.items():
-            c_w1w2 = sum(w3_counts.values())          # C(w1, w2)
-            c_w2   = sum(self.bigrams[w2].values())   # C(w2, *)
-
-            for w3, c123 in w3_counts.items():
-                if c123 == 0:
-                    continue
-                c_w2w3 = self.bigrams[w2][w3]         # C(w2, w3)
-                c_w3   = self.unigrams[w3]             # C(w3)
-
-                # Adjusted MLE after removing one occurrence of (w1,w2,w3)
-                t3 = (c123  - 1) / (c_w1w2 - 1) if c_w1w2 > 1 else 0.0
-                t2 = (c_w2w3 - 1) / (c_w2  - 1) if c_w2   > 1 else 0.0
-                t1 = (c_w3   - 1) / (self.N  - 1) if self.N  > 1 else 0.0
-
-                best = max(t1, t2, t3)
-                if best == t3:
-                    l3 += c123
-                elif best == t2:
-                    l2 += c123
-                else:
-                    l1 += c123
+        if self.order == 3:
+            for (w1, w2), w3_counts in self.trigrams.items():
+                c_w1w2 = sum(w3_counts.values())
+                c_w2   = sum(self.bigrams[w2].values())
+                for w3, c123 in w3_counts.items():
+                    if c123 == 0:
+                        continue
+                    c_w2w3 = self.bigrams[w2][w3]
+                    c_w3   = self.unigrams[w3]
+                    t3 = (c123  - 1) / (c_w1w2 - 1) if c_w1w2 > 1 else 0.0
+                    t2 = (c_w2w3 - 1) / (c_w2  - 1) if c_w2   > 1 else 0.0
+                    t1 = (c_w3   - 1) / (self.N  - 1) if self.N  > 1 else 0.0
+                    best = max(t1, t2, t3)
+                    if best == t3:
+                        l3 += c123
+                    elif best == t2:
+                        l2 += c123
+                    else:
+                        l1 += c123
+        else:  # order == 2
+            for w2, w3_counts in self.bigrams.items():
+                c_w2 = sum(w3_counts.values())
+                for w3, c23 in w3_counts.items():
+                    if c23 == 0:
+                        continue
+                    c_w3 = self.unigrams[w3]
+                    t2 = (c23 - 1) / (c_w2 - 1) if c_w2 > 1 else 0.0
+                    t1 = (c_w3 - 1) / (self.N - 1) if self.N > 1 else 0.0
+                    if t2 >= t1:
+                        l2 += c23
+                    else:
+                        l1 += c23
 
         total = l1 + l2 + l3
         if total > 0:
